@@ -5,14 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import AIService from '@/services/aiService';
 
 interface ContentGenerationProps {
   keyword: string;
   title: string;
   topic: any;
+  aiService: AIService;
 }
 
-const ContentGeneration: React.FC<ContentGenerationProps> = ({ keyword, title, topic }) => {
+const ContentGeneration: React.FC<ContentGenerationProps> = ({ keyword, title, topic, aiService }) => {
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [seoScore, setSeoScore] = useState(0);
@@ -22,58 +24,31 @@ const ContentGeneration: React.FC<ContentGenerationProps> = ({ keyword, title, t
     if (!keyword || !title || !topic) return;
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Mock content generation
-    const mockContent = `# ${title}
-
-${keyword} has become increasingly important in today's digital landscape. This comprehensive guide will walk you through everything you need to know about ${keyword} and how to implement it effectively.
-
-## Introduction
-
-In the rapidly evolving world of digital marketing, ${keyword} stands out as a crucial element for success. Whether you're a beginner or looking to refine your approach, understanding ${keyword} can significantly impact your results.
-
-## Why ${keyword} Matters
-
-The importance of ${keyword} cannot be overstated. Here are key reasons why you should focus on ${keyword}:
-
-- Improved visibility and reach
-- Better engagement with your target audience
-- Enhanced ROI on your marketing efforts
-- Competitive advantage in your industry
-
-## Best Practices for ${keyword}
-
-To maximize the effectiveness of your ${keyword} strategy, consider these proven practices:
-
-1. **Research and Planning**: Start with thorough research to understand your audience and competition.
-2. **Quality over Quantity**: Focus on creating high-quality content rather than volume.
-3. **Consistent Monitoring**: Regularly track and analyze your ${keyword} performance.
-4. **Continuous Optimization**: Make data-driven improvements to your approach.
-
-## Common Mistakes to Avoid
-
-While implementing ${keyword} strategies, be aware of these common pitfalls:
-
-- Neglecting audience research
-- Overlooking mobile optimization
-- Ignoring analytics and performance metrics
-- Focusing solely on short-term results
-
-## Conclusion
-
-Mastering ${keyword} requires dedication, strategic thinking, and continuous learning. By following the guidelines outlined in this comprehensive guide, you'll be well-equipped to leverage ${keyword} for your business success.
-
-Remember, ${keyword} is not just a trend—it's a fundamental aspect of modern digital strategy that will continue to evolve and shape the industry.`;
-    
-    setContent(mockContent);
-    
-    // Calculate basic SEO score
-    const keywordCount = (mockContent.toLowerCase().match(new RegExp(keyword.toLowerCase(), 'g')) || []).length;
-    const score = Math.min(100, Math.max(60, keywordCount * 10 + Math.random() * 20));
-    setSeoScore(Math.round(score));
-    
-    setIsLoading(false);
+    try {
+      const generatedContent = await aiService.generateContent(keyword, title, topic);
+      setContent(generatedContent);
+      
+      // Calculate SEO score
+      const score = aiService.calculateSEOScore(generatedContent, keyword);
+      setSeoScore(score);
+      
+      console.log('Generated content:', generatedContent);
+      console.log('SEO Score:', score);
+      
+      toast({
+        title: "Content Generated!",
+        description: `Generated ${generatedContent.split(/\s+/).length} words with ${score}% SEO score.`,
+      });
+    } catch (error) {
+      console.error('Error generating content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate content. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -122,7 +97,7 @@ Remember, ${keyword} is not just a trend—it's a fundamental aspect of modern d
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-2" />}
-            {isLoading ? 'Generating Content...' : 'Generate SEO Content'}
+            {isLoading ? 'Generating Content...' : 'Generate AI Content'}
           </Button>
 
           {content && (
@@ -136,6 +111,9 @@ Remember, ${keyword} is not just a trend—it's a fundamental aspect of modern d
                     'bg-red-100 text-red-800'
                   }`}>
                     SEO Score: {seoScore}%
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {content.split(/\s+/).length} words
                   </div>
                 </div>
               </div>

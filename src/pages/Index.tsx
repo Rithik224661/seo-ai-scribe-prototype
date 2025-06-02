@@ -1,19 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import StepIndicator from '@/components/StepIndicator';
 import KeywordResearch from '@/components/KeywordResearch';
 import TitleGeneration from '@/components/TitleGeneration';
 import TopicSelection from '@/components/TopicSelection';
 import ContentGeneration from '@/components/ContentGeneration';
+import ApiKeyInput from '@/components/ApiKeyInput';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import AIService from '@/services/aiService';
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedKeyword, setSelectedKeyword] = useState('');
   const [selectedTitle, setSelectedTitle] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
+  const [apiKey, setApiKey] = useState('');
+  const [aiService, setAiService] = useState<AIService | null>(null);
 
   const steps = [
     'Keyword Research',
@@ -22,7 +26,27 @@ const Index = () => {
     'Content Creation'
   ];
 
+  useEffect(() => {
+    // Check for stored API key on component mount
+    const storedKey = localStorage.getItem('openai_api_key');
+    if (storedKey) {
+      setApiKey(storedKey);
+      setAiService(new AIService({ apiKey: storedKey }));
+    }
+  }, []);
+
+  const handleApiKeySet = (key: string) => {
+    setApiKey(key);
+    if (key) {
+      setAiService(new AIService({ apiKey: key }));
+    } else {
+      setAiService(null);
+    }
+  };
+
   const canProceedToNext = () => {
+    if (!apiKey) return false;
+    
     switch (currentStep) {
       case 1: return selectedKeyword;
       case 2: return selectedTitle;
@@ -45,12 +69,15 @@ const Index = () => {
   };
 
   const renderCurrentStep = () => {
+    if (!aiService) return null;
+
     switch (currentStep) {
       case 1:
         return (
           <KeywordResearch 
             onKeywordSelect={setSelectedKeyword}
             selectedKeyword={selectedKeyword}
+            aiService={aiService}
           />
         );
       case 2:
@@ -59,6 +86,7 @@ const Index = () => {
             keyword={selectedKeyword}
             onTitleSelect={setSelectedTitle}
             selectedTitle={selectedTitle}
+            aiService={aiService}
           />
         );
       case 3:
@@ -68,6 +96,7 @@ const Index = () => {
             keyword={selectedKeyword}
             onTopicSelect={setSelectedTopic}
             selectedTopic={selectedTopic}
+            aiService={aiService}
           />
         );
       case 4:
@@ -76,6 +105,7 @@ const Index = () => {
             keyword={selectedKeyword}
             title={selectedTitle}
             topic={selectedTopic}
+            aiService={aiService}
           />
         );
       default:
@@ -89,36 +119,42 @@ const Index = () => {
       
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <StepIndicator currentStep={currentStep} steps={steps} />
+          <ApiKeyInput onApiKeySet={handleApiKeySet} apiKey={apiKey} />
           
-          <div className="mb-8">
-            {renderCurrentStep()}
-          </div>
+          {apiKey && (
+            <>
+              <StepIndicator currentStep={currentStep} steps={steps} />
+              
+              <div className="mb-8">
+                {renderCurrentStep()}
+              </div>
 
-          <div className="flex justify-between items-center">
-            <Button
-              onClick={prevStep}
-              disabled={currentStep === 1}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Previous</span>
-            </Button>
+              <div className="flex justify-between items-center">
+                <Button
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                  variant="outline"
+                  className="flex items-center space-x-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Previous</span>
+                </Button>
 
-            <div className="text-sm text-gray-500">
-              Step {currentStep} of {steps.length}
-            </div>
+                <div className="text-sm text-gray-500">
+                  Step {currentStep} of {steps.length}
+                </div>
 
-            <Button
-              onClick={nextStep}
-              disabled={!canProceedToNext() || currentStep === 4}
-              className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <span>Next</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
+                <Button
+                  onClick={nextStep}
+                  disabled={!canProceedToNext() || currentStep === 4}
+                  className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mt-8 text-center">

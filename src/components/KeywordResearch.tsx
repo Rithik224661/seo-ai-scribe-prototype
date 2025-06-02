@@ -4,43 +4,46 @@ import { Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import AIService from '@/services/aiService';
 
 interface KeywordResearchProps {
   onKeywordSelect: (keyword: string) => void;
   selectedKeyword: string;
+  aiService: AIService;
 }
 
-const KeywordResearch: React.FC<KeywordResearchProps> = ({ onKeywordSelect, selectedKeyword }) => {
+const KeywordResearch: React.FC<KeywordResearchProps> = ({ onKeywordSelect, selectedKeyword, aiService }) => {
   const [seedKeyword, setSeedKeyword] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  // Mock AI keyword generation for prototype
   const generateKeywords = async () => {
     if (!seedKeyword.trim()) return;
     
     setIsLoading(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock keyword suggestions based on seed keyword
-    const mockKeywords = [
-      `${seedKeyword} strategy`,
-      `best ${seedKeyword} practices`,
-      `${seedKeyword} optimization`,
-      `${seedKeyword} tools`,
-      `${seedKeyword} guide`
-    ];
-    
-    setKeywords(mockKeywords);
-    setIsLoading(false);
+    try {
+      const generatedKeywords = await aiService.generateKeywords(seedKeyword.trim());
+      setKeywords(generatedKeywords);
+      console.log('Generated keywords:', generatedKeywords);
+    } catch (error) {
+      console.error('Error generating keywords:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate keywords. Please check your API key and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Keyword Research</h2>
-        <p className="text-gray-600">Enter a seed keyword to generate related keyword suggestions</p>
+        <p className="text-gray-600">Enter a seed keyword to generate AI-powered keyword suggestions</p>
       </div>
 
       <Card className="p-6">
@@ -65,7 +68,7 @@ const KeywordResearch: React.FC<KeywordResearchProps> = ({ onKeywordSelect, sele
 
           {keywords.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">Suggested Keywords:</h3>
+              <h3 className="font-medium text-gray-900">AI-Generated Keywords:</h3>
               <div className="grid gap-2">
                 {keywords.map((keyword, index) => (
                   <button

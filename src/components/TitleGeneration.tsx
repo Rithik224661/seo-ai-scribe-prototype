@@ -3,32 +3,39 @@ import React, { useState } from 'react';
 import { Lightbulb, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import AIService from '@/services/aiService';
 
 interface TitleGenerationProps {
   keyword: string;
   onTitleSelect: (title: string) => void;
   selectedTitle: string;
+  aiService: AIService;
 }
 
-const TitleGeneration: React.FC<TitleGenerationProps> = ({ keyword, onTitleSelect, selectedTitle }) => {
+const TitleGeneration: React.FC<TitleGenerationProps> = ({ keyword, onTitleSelect, selectedTitle, aiService }) => {
   const [titles, setTitles] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const generateTitles = async () => {
     if (!keyword) return;
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock title generation based on keyword
-    const mockTitles = [
-      `The Complete Guide to ${keyword}: Best Practices for 2024`,
-      `How to Master ${keyword}: A Step-by-Step Approach`,
-      `${keyword} Made Simple: Essential Tips for Beginners`
-    ];
-    
-    setTitles(mockTitles);
-    setIsLoading(false);
+    try {
+      const generatedTitles = await aiService.generateTitles(keyword);
+      setTitles(generatedTitles);
+      console.log('Generated titles:', generatedTitles);
+    } catch (error) {
+      console.error('Error generating titles:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate titles. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -56,7 +63,7 @@ const TitleGeneration: React.FC<TitleGenerationProps> = ({ keyword, onTitleSelec
 
           {titles.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">Generated Titles:</h3>
+              <h3 className="font-medium text-gray-900">AI-Generated Titles:</h3>
               <div className="grid gap-3">
                 {titles.map((title, index) => (
                   <button
@@ -72,7 +79,7 @@ const TitleGeneration: React.FC<TitleGenerationProps> = ({ keyword, onTitleSelec
                   >
                     <div className="font-medium">{title}</div>
                     <div className="text-sm text-gray-500 mt-1">
-                      SEO Score: {85 + index * 3}% | Click to select
+                      Length: {title.length} chars | Click to select
                     </div>
                   </button>
                 ))}

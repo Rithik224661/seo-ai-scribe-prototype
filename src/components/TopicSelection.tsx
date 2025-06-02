@@ -3,52 +3,40 @@ import React, { useState } from 'react';
 import { BookText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import AIService from '@/services/aiService';
 
 interface TopicSelectionProps {
   title: string;
   keyword: string;
   onTopicSelect: (topic: any) => void;
   selectedTopic: any;
+  aiService: AIService;
 }
 
-const TopicSelection: React.FC<TopicSelectionProps> = ({ title, keyword, onTopicSelect, selectedTopic }) => {
+const TopicSelection: React.FC<TopicSelectionProps> = ({ title, keyword, onTopicSelect, selectedTopic, aiService }) => {
   const [topics, setTopics] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const generateTopics = async () => {
     if (!title || !keyword) return;
     
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock topic generation based on title and keyword
-    const mockTopics = [
-      {
-        title: "Comprehensive Overview",
-        outline: [
-          "Introduction to " + keyword,
-          "Why " + keyword + " matters in 2024",
-          "Key benefits and advantages",
-          "Best practices and strategies",
-          "Common mistakes to avoid",
-          "Conclusion and next steps"
-        ]
-      },
-      {
-        title: "Practical Implementation Guide",
-        outline: [
-          "Getting started with " + keyword,
-          "Step-by-step implementation",
-          "Tools and resources needed",
-          "Real-world examples",
-          "Measuring success and ROI",
-          "Advanced tips and tricks"
-        ]
-      }
-    ];
-    
-    setTopics(mockTopics);
-    setIsLoading(false);
+    try {
+      const generatedTopics = await aiService.generateTopics(title, keyword);
+      setTopics(generatedTopics);
+      console.log('Generated topics:', generatedTopics);
+    } catch (error) {
+      console.error('Error generating topics:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate topics. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,7 +69,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ title, keyword, onTopic
 
           {topics.length > 0 && (
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Suggested Topic Outlines:</h3>
+              <h3 className="font-medium text-gray-900">AI-Generated Topic Outlines:</h3>
               <div className="grid gap-4">
                 {topics.map((topic, index) => (
                   <button
@@ -100,7 +88,9 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ title, keyword, onTopic
                       {topic.outline.slice(0, 3).map((point: string, i: number) => (
                         <div key={i} className="text-sm text-gray-600">• {point}</div>
                       ))}
-                      <div className="text-sm text-gray-500">...and {topic.outline.length - 3} more points</div>
+                      {topic.outline.length > 3 && (
+                        <div className="text-sm text-gray-500">...and {topic.outline.length - 3} more sections</div>
+                      )}
                     </div>
                   </button>
                 ))}
