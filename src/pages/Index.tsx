@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import StepIndicator from '@/components/StepIndicator';
@@ -12,12 +11,15 @@ import ContentHistory from '@/components/ContentHistory';
 import ExportHub from '@/components/ExportHub';
 import Settings from '@/components/Settings';
 import ApiKeyInput from '@/components/ApiKeyInput';
+import Login from '@/components/Login';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LogOut } from 'lucide-react';
 import AIService from '@/services/aiService';
 import historyService from '@/services/historyService';
+import analyticsService from '@/services/analyticsService';
 
 const Index = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeSection, setActiveSection] = useState('content-writer');
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedKeyword, setSelectedKeyword] = useState('');
@@ -34,12 +36,33 @@ const Index = () => {
   ];
 
   useEffect(() => {
-    const storedKey = localStorage.getItem('openai_api_key');
-    if (storedKey) {
-      setApiKey(storedKey);
-      setAiService(new AIService({ apiKey: storedKey }));
+    // Check login status
+    const loginStatus = localStorage.getItem('isLoggedIn');
+    if (loginStatus === 'true') {
+      setIsLoggedIn(true);
+    }
+
+    // Load API key if logged in
+    if (loginStatus === 'true') {
+      const storedKey = localStorage.getItem('openai_api_key');
+      if (storedKey) {
+        setApiKey(storedKey);
+        setAiService(new AIService({ apiKey: storedKey }));
+      }
     }
   }, []);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('openai_api_key');
+    setIsLoggedIn(false);
+    setApiKey('');
+    setAiService(null);
+  };
 
   const handleApiKeySet = (key: string) => {
     setApiKey(key);
@@ -83,6 +106,7 @@ const Index = () => {
       content: keyword,
       keyword: keyword
     });
+    analyticsService.updateAnalytics();
   };
 
   const handleTitleSelect = (title: string) => {
@@ -93,7 +117,13 @@ const Index = () => {
       content: title,
       keyword: selectedKeyword
     });
+    analyticsService.updateAnalytics();
   };
+
+  // If not logged in, show login screen
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   const renderContentWriter = () => {
     if (!aiService) {
@@ -180,7 +210,7 @@ const Index = () => {
       case 'export':
         return <ExportHub />;
       case 'settings':
-        return <Settings />;
+        return <Settings aiService={aiService} />;
       default:
         return renderContentWriter();
     }
@@ -192,6 +222,18 @@ const Index = () => {
       
       <main className="flex-1 p-8">
         <div className="max-w-6xl mx-auto">
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="sm"
+              className="flex items-center space-x-2"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </Button>
+          </div>
+          
           <div className="bg-white rounded-2xl shadow-xl p-8 min-h-[calc(100vh-4rem)]">
             {activeSection === 'content-writer' && !apiKey && (
               <ApiKeyInput onApiKeySet={handleApiKeySet} apiKey={apiKey} />

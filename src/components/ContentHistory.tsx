@@ -64,6 +64,47 @@ const ContentHistory: React.FC = () => {
     });
   };
 
+  const exportAllContent = () => {
+    if (history.length === 0) {
+      toast({
+        title: "No Content",
+        description: "There is no content to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let exportContent = "SEO Scientist - Content History Export\n";
+    exportContent += "=====================================\n\n";
+    
+    history.forEach((item, index) => {
+      exportContent += `${index + 1}. ${item.title}\n`;
+      exportContent += `Type: ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}\n`;
+      exportContent += `Keyword: ${item.keyword}\n`;
+      if (item.seoScore) {
+        exportContent += `SEO Score: ${item.seoScore}%\n`;
+      }
+      exportContent += `Created: ${item.createdAt.toLocaleDateString()} at ${item.createdAt.toLocaleTimeString()}\n`;
+      exportContent += `Content:\n${item.content}\n`;
+      exportContent += "\n" + "=".repeat(50) + "\n\n";
+    });
+
+    const blob = new Blob([exportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `seo-scientist-history-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export Complete!",
+      description: `${history.length} content items have been exported.`,
+    });
+  };
+
   const deleteItem = (id: string) => {
     const updatedHistory = history.filter(item => item.id !== id);
     setHistory(updatedHistory);
@@ -91,7 +132,7 @@ const ContentHistory: React.FC = () => {
             className="pl-10"
           />
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={exportAllContent}>
           <History className="w-4 h-4 mr-2" />
           Export All
         </Button>

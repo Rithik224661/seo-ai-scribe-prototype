@@ -1,11 +1,12 @@
-
 import React, { useState } from 'react';
-import { FileText, Loader2, Copy, Download } from 'lucide-react';
+import { FileText, Loader2, Copy, Download, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import AIService from '@/services/aiService';
+import historyService from '@/services/historyService';
+import analyticsService from '@/services/analyticsService';
 
 interface ContentGenerationProps {
   keyword: string;
@@ -16,8 +17,8 @@ interface ContentGenerationProps {
 
 const ContentGeneration: React.FC<ContentGenerationProps> = ({ keyword, title, topic, aiService }) => {
   const [content, setContent] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [seoScore, setSeoScore] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const generateContent = async () => {
@@ -26,19 +27,25 @@ const ContentGeneration: React.FC<ContentGenerationProps> = ({ keyword, title, t
     setIsLoading(true);
     try {
       const generatedContent = await aiService.generateContent(keyword, title, topic);
-      setContent(generatedContent);
-      
-      // Calculate SEO score
       const score = aiService.calculateSEOScore(generatedContent, keyword);
+      
+      setContent(generatedContent);
       setSeoScore(score);
+      
+      // Save to history with SEO score
+      historyService.saveToHistory({
+        type: 'content',
+        title: title,
+        content: generatedContent,
+        keyword: keyword,
+        seoScore: score
+      });
+
+      // Update analytics with SEO score
+      analyticsService.updateAnalytics(score, 10);
       
       console.log('Generated content:', generatedContent);
       console.log('SEO Score:', score);
-      
-      toast({
-        title: "Content Generated!",
-        description: `Generated ${generatedContent.split(/\s+/).length} words with ${score}% SEO score.`,
-      });
     } catch (error) {
       console.error('Error generating content:', error);
       toast({
@@ -81,23 +88,42 @@ const ContentGeneration: React.FC<ContentGenerationProps> = ({ keyword, title, t
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Content Generation</h2>
         <p className="text-gray-600">Generate SEO-optimized content based on your selections</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            Keyword: {keyword}
+          </span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            Topic: {topic?.title}
+          </span>
+        </div>
       </div>
 
       <Card className="p-6">
         <div className="space-y-4">
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-            <div><strong>Keyword:</strong> {keyword}</div>
-            <div><strong>Title:</strong> {title}</div>
-            <div><strong>Topic:</strong> {topic?.title}</div>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-gray-900">Selected Title:</h3>
+            {seoScore > 0 && (
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                <span className={`font-medium ${
+                  seoScore >= 80 ? 'text-green-600' :
+                  seoScore >= 60 ? 'text-yellow-600' :
+                  'text-red-600'
+                }`}>
+                  SEO Score: {seoScore}%
+                </span>
+              </div>
+            )}
           </div>
-
+          <p className="text-gray-700 font-medium">{title}</p>
+          
           <Button 
             onClick={generateContent}
             disabled={isLoading || !keyword || !title || !topic}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-2" />}
-            {isLoading ? 'Generating Content...' : 'Generate AI Content'}
+            {isLoading ? 'Generating Content...' : 'Generate SEO Content'}
           </Button>
 
           {content && (

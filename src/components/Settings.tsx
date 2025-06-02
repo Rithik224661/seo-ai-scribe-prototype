@@ -1,12 +1,18 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, User, Bell, Shield, Palette } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import AIService from '@/services/aiService';
 
-const Settings: React.FC = () => {
+interface SettingsProps {
+  aiService: AIService | null;
+}
+
+const Settings: React.FC<SettingsProps> = ({ aiService }) => {
+  const { toast } = useToast();
   const [settings, setSettings] = useState({
     autoSave: true,
     notifications: true,
@@ -17,8 +23,38 @@ const Settings: React.FC = () => {
     maxContentLength: 1000
   });
 
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('app_settings');
+    if (savedSettings) {
+      setSettings(JSON.parse(savedSettings));
+    }
+  }, []);
+
   const updateSetting = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    localStorage.setItem('app_settings', JSON.stringify(newSettings));
+    
+    // Update AI service if max content length changes
+    if (key === 'maxContentLength' && aiService) {
+      aiService.setMaxContentLength(value);
+    }
+    
+    toast({
+      title: "Setting Updated",
+      description: `${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} has been updated.`,
+    });
+  };
+
+  const saveAllSettings = () => {
+    localStorage.setItem('app_settings', JSON.stringify(settings));
+    if (aiService) {
+      aiService.setMaxContentLength(settings.maxContentLength);
+    }
+    toast({
+      title: "Settings Saved",
+      description: "All settings have been saved successfully.",
+    });
   };
 
   return (
@@ -88,9 +124,15 @@ const Settings: React.FC = () => {
               </label>
               <Input 
                 type="number" 
+                min="100"
+                max="3000"
                 value={settings.maxContentLength}
-                onChange={(e) => updateSetting('maxContentLength', parseInt(e.target.value))}
+                onChange={(e) => updateSetting('maxContentLength', parseInt(e.target.value) || 1000)}
+                className="mb-2"
               />
+              <p className="text-xs text-gray-500">
+                AI will generate approximately {settings.maxContentLength} words of content
+              </p>
             </div>
           </div>
         </Card>
@@ -185,7 +227,10 @@ const Settings: React.FC = () => {
 
       <div className="flex justify-end space-x-4">
         <Button variant="outline">Reset to Defaults</Button>
-        <Button className="bg-gradient-to-r from-blue-600 to-purple-600">
+        <Button 
+          className="bg-gradient-to-r from-blue-600 to-purple-600"
+          onClick={saveAllSettings}
+        >
           Save Changes
         </Button>
       </div>

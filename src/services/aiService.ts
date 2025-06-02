@@ -1,4 +1,3 @@
-
 interface AIServiceConfig {
   apiKey: string;
 }
@@ -6,9 +5,20 @@ interface AIServiceConfig {
 class AIService {
   private apiKey: string;
   private baseUrl = 'https://api.openai.com/v1/chat/completions';
+  private maxContentLength: number = 1000;
 
   constructor(config: AIServiceConfig) {
     this.apiKey = config.apiKey;
+    // Load max content length from settings
+    const savedSettings = localStorage.getItem('app_settings');
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      this.maxContentLength = settings.maxContentLength || 1000;
+    }
+  }
+
+  setMaxContentLength(length: number) {
+    this.maxContentLength = length;
   }
 
   private async makeRequest(messages: { role: string; content: string }[], maxTokens: number = 1000) {
@@ -131,7 +141,7 @@ class AIService {
     - Outline: ${topic.outline.join(', ')}
     
     Requirements:
-    - 1000-1500 words for comprehensive coverage
+    - Write approximately ${this.maxContentLength} words
     - Natural keyword integration (1-2% density, avoid keyword stuffing)
     - Engaging introduction with hook and clear value proposition
     - Use headers (##) for main sections based on the outline
@@ -146,7 +156,7 @@ class AIService {
     const response = await this.makeRequest([
       { role: 'system', content: 'You are an expert content writer specializing in SEO-optimized blog posts and articles that rank well and provide genuine value to readers.' },
       { role: 'user', content: prompt }
-    ], 2000);
+    ], Math.min(3000, Math.max(1000, this.maxContentLength * 2)));
 
     return response;
   }
